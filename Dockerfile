@@ -11,7 +11,6 @@ RUN  DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip curl swig
 # RUN pip3 install git+https://github.com/hillar/truecaser.git
 RUN pip3 install mxnet sentencepiece sockeye mosestokenizer estnltk
 RUN cd /tmp && curl -s -J -O -L https://github.com/hillar/truecaser/archive/master.tar.gz && tar -xf truecaser-master.tar.gz && cd truecaser-master && pip3 install .
-RUN pip3 list
 
 RUN mkdir -p /opt/
 #TODO wait for https://github.com/TartuNLP/nazgul.git
