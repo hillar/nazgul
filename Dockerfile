@@ -1,24 +1,20 @@
 FROM ubuntu:20.04 as base
 
 MAINTAINER No Maintenance Intended
-LABEL description="nazgul :: NMT provider implementation by TartuNLP"
+LABEL description="nazgul is NMT provider implementation by TartuNLP https://tartunlp.ai/ "
 
-RUN dpkg -l
+RUN apt-get update
 
 FROM base as build
 RUN apt-get update
-RUN  DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip \
-  curl \
-  swig
-
+RUN  DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip curl swig
 # TODO wait for git+https://github.com/TartuNLP/truecaser.git
 # RUN pip3 install git+https://github.com/hillar/truecaser.git
-RUN cd /tmp && curl -s -J -O -L https://github.com/hillar/truecaser/archive/master.tar.gz && tar -xf truecaser-master.tar.gz && cd truecaser-master && pip3 install .
 RUN pip3 install mxnet sentencepiece sockeye mosestokenizer estnltk
+RUN cd /tmp && curl -s -J -O -L https://github.com/hillar/truecaser/archive/master.tar.gz && tar -xf truecaser-master.tar.gz && cd truecaser-master && pip3 install .
 RUN pip3 list
 
 RUN mkdir -p /opt/
-
 #TODO wait for https://github.com/TartuNLP/nazgul.git
 #RUN cd /opt && git clone https://github.com/hillar/nazgul.git
 RUN cd /opt && curl -s -J -O -L https://github.com/hillar/nazgul/archive/master.tar.gz && tar -xf nazgul-master.tar.gz && mv nazgul-master nazgul && rm nazgul-master.tar.gz
@@ -27,16 +23,13 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get remove -y --purge python3-pip
 
 
 FROM base
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3
-
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3
 COPY --from=build /opt /opt
 COPY --from=build /usr/local/lib/python3.8 /usr/local/lib/python3.8
-
 RUN apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN echo $(date) > /build.date
 
 EXPOSE 12346
-
 ENTRYPOINT echo "Nazgul Server Docker Image built $(cat /build.date)" \
 	    && python3 -V \
       && echo "Sockeye model $(cat /opt/nazgul/en-et-lv-ru/translation/version)" \
