@@ -6,7 +6,6 @@ LABEL description="nazgul is NMT provider implementation by TartuNLP https://tar
 RUN apt-get update
 
 FROM base as build
-RUN apt-get update
 RUN  DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip curl swig
 # TODO wait for git+https://github.com/TartuNLP/truecaser.git
 # RUN pip3 install git+https://github.com/hillar/truecaser.git
@@ -21,12 +20,11 @@ RUN cd /opt && curl -s -J -O -L https://github.com/hillar/nazgul/archive/master.
 RUN cd /opt/nazgul && curl -s -J -O 'https://owncloud.ut.ee/owncloud/index.php/s/sq9FebWmBNe9JGZ/download?path=%2F&files=en-et-lv-ru.tgz' && tar -xf en-et-lv-ru.tgz && rm en-et-lv-ru.tgz
 RUN DEBIAN_FRONTEND=noninteractive apt-get remove -y --purge python3-pip
 
-
 FROM base
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3
+RUN apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY --from=build /opt /opt
 COPY --from=build /usr/local/lib/python3.8 /usr/local/lib/python3.8
-RUN apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN echo $(date) > /build.date
 
 EXPOSE 12346
