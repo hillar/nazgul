@@ -17,17 +17,17 @@ def _preprocess(sentence, index, lang_factor, style_factor,
 	truecased_sentence = applytc.processLine(models.truecaser, sentence)
 	pieces = models.segmenter.EncodeAsPieces(truecased_sentence)
 	segmented_sentence = ' '.join(pieces)
-	
+
 	rawlen = len(pieces)
 	prejsson = { 'text': segmented_sentence, 'factors': [" ".join([lang_factor] * rawlen), " ".join([style_factor] * rawlen), " ".join(['f0'] * rawlen), " ".join(['g0'] * rawlen)]}
-	
+
 	try:
 		if constraints and constraints[index]:
 			prejsson['avoid'] = constraints[index]
 	except IndexError as e:
 		sys.stderr.write(str(constraints) + ", " + str(index))
 		raise e
-	
+
 	jsson = json.dumps(prejsson)
 	log("PREPROC received '" + sentence + "', turned it into '" + segmented_sentence + "'")
 	return jsson
@@ -43,9 +43,9 @@ def _postprocess(sentence, idx, models):
 		de_truecased_sentence = de_segmented_sentence[0].upper() + de_segmented_sentence[1:]
 	except:
 		de_truecased_sentence = de_segmented_sentence
-	
+
 	log("POSTPROC received '" + sentence + "', turned it into '" + de_truecased_sentence + "'")
-	
+
 	return de_truecased_sentence
 
 
@@ -55,7 +55,11 @@ def _forward(sentences, models):
 	return [(output.translation, output.score) for output in outputs]
 
 
-def _loadTranslator(model_folders, ctx = mx.gpu()):
+def _loadTranslator(model_folders):
+	if mx.context.num_gpus() == 0:
+		ctx = mx.cpu()
+	else:
+		ctx = mx.gpu()
 	models, source_vocabs, target_vocab = inference.load_models(
 		context=ctx,
 		max_input_len=None,
@@ -67,7 +71,7 @@ def _loadTranslator(model_folders, ctx = mx.gpu()):
 		max_output_length_num_stds=2,
 		decoder_return_logit_inputs=False,
 		cache_output_layer_w_b=False)
-	
+
 	return inference.Translator(context=ctx,
 								ensemble_mode="linear",
 								bucket_source_width=10,
@@ -85,30 +89,29 @@ def _loadTranslator(model_folders, ctx = mx.gpu()):
 def loadModels(translationModelPath, truecaserModelPath, segmenterModelPath):
 	"""Load translation, truecasing and segmentation models and
 	return them as a named tuple"""
-	
+
 	translationModel = _loadTranslator([translationModelPath,])
-	
+
 	truecaserModel = applytc.loadModel(truecaserModelPath)
-	
+
 	segmenterModel = spm.SentencePieceProcessor()
 	segmenterModel.Load(segmenterModelPath)
-	
+
 	Models = namedtuple("Models", ["translator", "truecaser", "segmenter"])
-	
+
 	return Models(translationModel, truecaserModel, segmenterModel)
 
 
 def translate(models, sentences, outputLanguage, outputStyle, constraints):
 	"""Take list of sentences, output language and style as well as a list of constraints,
 	and feed them through a set of loaded NMT models.
-	
+
 	Return list of translations, list of scores, list of preprocessed input sentences and list of raw translations prior to postprocessing."""
 	cleaninputs = _doMany(sentences, _preprocess, (outputLanguage, outputStyle, models, constraints))
-	
+
 	scoredTranslations = _forward(cleaninputs, models)
 	translations, scores = zip(*scoredTranslations)
-	
-	postprocessed_translations = _doMany(translations, _postprocess, (models,))
-	
-	return postprocessed_translations, scores, cleaninputs, translations
 
+	postprocessed_translations = _doMany(translations, _postprocess, (models,))
+
+	return postprocessed_translations, scores, cleaninputs, translations
